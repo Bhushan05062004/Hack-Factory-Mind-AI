@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Factory Mind AI OMS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#020617;overflow:hidden;height:100vh}
+
+    /* ── Animated mesh background ── */
+    .bg-mesh{
+      position:fixed;inset:0;z-index:0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, #6366f130 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 80%, #8b5cf630 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 50% 50%, #0f172a 0%, #020617 100%);
+    }
+
+    /* ── Floating orbs ── */
+    .orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0}
+    .orb-1{width:500px;height:500px;background:#6366f120;top:-100px;left:-100px;animation:drift1 12s ease-in-out infinite}
+    .orb-2{width:400px;height:400px;background:#8b5cf620;bottom:-80px;right:-80px;animation:drift2 15s ease-in-out infinite}
+    .orb-3{width:300px;height:300px;background:#06b6d420;top:40%;left:40%;animation:drift3 10s ease-in-out infinite}
+
+    @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,40px) scale(1.1)}}
+    @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,-30px) scale(1.15)}}
+    @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(0.9)}66%{transform:translate(-30px,20px) scale(1.1)}}
+
+    /* ── Grid lines ── */
+    .grid-lines{
+      position:fixed;inset:0;z-index:0;
+      background-image:
+        linear-gradient(rgba(99,102,241,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,.04) 1px, transparent 1px);
+      background-size:60px 60px;
+      mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+    }
+
+    /* ── Particles ── */
+    .particle{position:fixed;width:2px;height:2px;background:#6366f1;border-radius:50%;pointer-events:none;z-index:0}
+    @keyframes rise{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:1}90%{opacity:.5}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+
+    /* ── Content ── */
+    .content{position:relative;z-index:10}
+
+    /* ── Logo pulse ── */
+    @keyframes logoPulse{0%,100%{box-shadow:0 0 0 0 #6366f140}50%{box-shadow:0 0 0 20px #6366f100}}
+    .logo-pulse{animation:logoPulse 3s ease-in-out infinite}
+
+    /* ── Title reveal ── */
+    @keyframes titleReveal{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .title-reveal{animation:titleReveal .8s cubic-bezier(.16,1,.3,1) forwards}
+    .delay-1{animation-delay:.1s;opacity:0}
+    .delay-2{animation-delay:.2s;opacity:0}
+    .delay-3{animation-delay:.35s;opacity:0}
+    .delay-4{animation-delay:.5s;opacity:0}
+    .delay-5{animation-delay:.65s;opacity:0}
+
+    /* ── Card hover ── */
+    .role-card{
+      position:relative;overflow:hidden;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;padding:32px;
+      transition:all .4s cubic-bezier(.16,1,.3,1);
+      cursor:pointer;text-decoration:none;display:block;
+    }
+    .role-card::before{
+      content:'';position:absolute;inset:0;border-radius:24px;
+      background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 60%);
+      opacity:0;transition:opacity .4s;
+    }
+    .role-card::after{
+      content:'';position:absolute;inset:-1px;border-radius:25px;
+      background:linear-gradient(135deg,var(--glow-color),transparent 60%);
+      opacity:0;transition:opacity .4s;z-index:-1;
+    }
+    .role-card:hover{transform:translateY(-8px) scale(1.02);border-color:rgba(255,255,255,.15)}
+    .role-card:hover::before{opacity:1}
+    .role-card:hover::after{opacity:1}
+    .role-card.user-card{--glow-color:#6366f140}
+    .role-card.admin-card{--glow-color:#ec489940}
+    .role-card:hover .card-arrow{transform:translateX(6px)}
+    .card-arrow{transition:transform .3s cubic-bezier(.16,1,.3,1)}
+
+    /* ── Icon glow ── */
+    .icon-wrap{
+      width:56px;height:56px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:20px;transition:all .4s;
+    }
+    .role-card:hover .icon-wrap{transform:scale(1.1) rotate(-5deg)}
+
+    /* ── Shimmer line ── */
+    @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+    .shimmer-line{
+      position:absolute;bottom:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--shimmer-color),transparent);
+      transform:translateX(-100%);
+    }
+    .role-card:hover .shimmer-line{animation:shimmer .6s ease forwards}
+    .user-card .shimmer-line{--shimmer-color:#6366f1}
+    .admin-card .shimmer-line{--shimmer-color:#ec4899}
+
+    /* ── Badge ── */
+    @keyframes badgePop{from{transform:scale(0) rotate(-10deg)}to{transform:scale(1) rotate(0)}}
+    .badge-pop{animation:badgePop .5s cubic-bezier(.34,1.56,.64,1) .8s both}
+
+    /* ── Scroll hint ── */
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+    .bounce{animation:bounce 2s ease-in-out infinite}
+
+    /* ── Noise texture ── */
+    .noise{
+      position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.025;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="grid-lines"></div>
+<div class="noise"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- Particles injected by JS -->
+<div id="particles"></div>
+
+<div class="content min-h-screen flex flex-col items-center justify-center px-6 py-12">
+
+  <!-- Top badge -->
+  <div class="badge-pop mb-8">
+    <span class="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium px-4 py-1.5 rounded-full">
+      <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+      DSATM Hackathon 2025 · Factory Mind AI
+    </span>
+  </div>
+
+  <!-- Logo -->
+  <div class="title-reveal delay-1 logo-pulse w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/40">
+    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+    </svg>
+  </div>
+
+  <!-- Heading -->
+  <h1 class="title-reveal delay-2 text-5xl sm:text-6xl font-black text-white text-center tracking-tight mb-3">
+    Nova <span class="bg-gradient-to-r from-indigo-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">Nexus</span>
+  </h1>
+  <p class="title-reveal delay-3 text-white/50 text-lg text-center mb-12 font-light">
+    Conversational Order Management System
+  </p>
+
+  <!-- Cards -->
+  <div class="title-reveal delay-4 grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-2xl">
+
+    <!-- Customer -->
+    <a href="/user" class="role-card user-card">
+      <div class="shimmer-line"></div>
+      <div class="icon-wrap bg-indigo-500/15 border border-indigo-500/20">
+        <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+        </svg>
+      </div>
+      <h2 class="text-white font-bold text-xl mb-2">Customer Portal</h2>
+      <p class="text-white/40 text-sm leading-relaxed mb-6">Place orders conversationally, track real-time status updates from the admin team.</p>
+      <div class="flex items-center gap-2 text-indigo-400 text-sm font-semibold">
+        Enter as Customer
+        <svg class="card-arrow w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </div>
+    </a>
+
+    <!-- Admin -->
+    <a href="/admin" class="role-card admin-card">
+      <div class="shimmer-line"></div>
+      <div class="icon-wrap bg-pink-500/15 border border-pink-500/20">
+        <svg class="w-7 h-7 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <h2 class="text-white font-bold text-xl mb-2">Admin Panel</h2>
+      <p class="text-white/40 text-sm leading-relaxed mb-6">Review incoming orders, update status, log quality notes, and manage the full dashboard.</p>
+      <div class="flex items-center gap-2 text-pink-400 text-sm font-semibold">
+        Enter as Admin
+        <svg class="card-arrow w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </div>
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <p class="title-reveal delay-5 text-white/15 text-xs mt-12 flex items-center gap-3">
+    <span>Powered by Gemini AI</span>
+    <span class="w-1 h-1 rounded-full bg-white/20"></span>
+    <span>FastAPI</span>
+    <span class="w-1 h-1 rounded-full bg-white/20"></span>
+    <span>Tailwind CSS</span>
+  </p>
+</div>
+
+<script>
+// Generate floating particles
+const container = document.getElementById('particles');
+for (let i = 0; i < 25; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = Math.random() * 3 + 1;
+  p.style.cssText = `
+    width:${size}px;height:${size}px;
+    left:${Math.random()*100}vw;
+    bottom:-10px;
+    opacity:${Math.random()*.6+.2};
+    animation:rise ${Math.random()*15+10}s linear ${Math.random()*10}s infinite;
+    background:${Math.random()>.5?'#6366f1':'#8b5cf6'};
+  `;
+  container.appendChild(p);
+}
+</script>
+</body>
+</html>
