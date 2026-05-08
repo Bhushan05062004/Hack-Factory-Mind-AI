@@ -14,7 +14,10 @@ COPY . .
 # Create data directory
 RUN mkdir -p /app/data
 
+# Make start script executable
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-# Seed database + FAISS at startup (when env vars are available), then start server
-CMD python seed.py && uvicorn app:app --host 0.0.0.0 --port 8000
+# Seed database + FAISS on first boot, then start server
+CMD ["./start.sh"]
