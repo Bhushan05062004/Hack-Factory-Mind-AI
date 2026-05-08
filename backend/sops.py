@@ -1,6 +1,6 @@
 """
 Factory Mind AI — SOP (Standard Operating Procedure) Embedding & Search
-Indexes SOP documents with sentence-transformers (all-MiniLM-L6-v2).
+Uses Google Gemini Embedding API (zero local RAM) instead of sentence-transformers.
 FAISS index is persisted to disk.
 
 TOKEN-EFFICIENCY: Limit top_k to 1 for SOPs; each snippet is trimmed
@@ -13,7 +13,6 @@ import numpy as np
 from typing import Optional
 
 # Lazy-loaded globals
-_model = None
 _index = None
 _sop_map: list[dict] = []
 
@@ -22,13 +21,40 @@ INDEX_PATH = os.path.join(INDEX_DIR, "sop_index.faiss")
 MAP_PATH = os.path.join(INDEX_DIR, "sop_map.json")
 
 
-def _get_model():
-    """Lazy-load the sentence-transformer model (shared with products)."""
-    global _model
-    if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
+def _embed_texts(texts: list[str]) -> np.ndarray:
+    """Embed texts using Google Gemini's free embedding API."""
+    import google.generativeai as genai
+    
+    results = []
+    for text in texts:
+        result = genai.embed_content(
+            model="models/gemini-embedding-001",
+            content=text,
+            task_type="RETRIEVAL_DOCUMENT",
+        )
+        results.append(result['embedding'])
+    
+    embeddings = np.array(results, dtype="float32")
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    embeddings = embeddings / norms
+    return embeddings
+
+
+def _embed_query(query: str) -> np.ndarray:
+    """Embed a single query using Google Gemini's free embedding API."""
+    import google.generativeai as genai
+    
+    result = genai.embed_content(
+        model="models/gemini-embedding-001",
+        content=query,
+        task_type="RETRIEVAL_QUERY",
+    )
+    vec = np.array([result['embedding']], dtype="float32")
+    norms = np.linalg.norm(vec, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    vec = vec / norms
+    return vec
 
 
 def _sop_text(sop: dict) -> str:
@@ -38,7 +64,7 @@ def _sop_text(sop: dict) -> str:
 
 def build_sop_index() -> int:
     """
-    Read all SOPs from SQLite, encode with sentence-transformers,
+    Read all SOPs from SQLite, encode with Gemini embedding API,
     and save a FAISS index to disk.
     Returns the number of SOPs indexed.
     """
@@ -49,10 +75,8 @@ def build_sop_index() -> int:
     if not sops:
         return 0
 
-    model = _get_model()
     texts = [_sop_text(s) for s in sops]
-    embeddings = model.encode(texts, normalize_embeddings=True)
-    embeddings = np.array(embeddings, dtype="float32")
+    embeddings = _embed_texts(texts)
 
     dim = embeddings.shape[1]
     index = faiss.IndexFlatIP(dim)
@@ -95,9 +119,7 @@ def search_sops(query: str, k: int = 1) -> list[dict]:
 
     _load_index()
 
-    model = _get_model()
-    query_vec = model.encode([query], normalize_embeddings=True)
-    query_vec = np.array(query_vec, dtype="float32")
+    query_vec = _embed_query(query)
 
     scores, indices = _index.search(query_vec, min(k, len(_sop_map)))
 

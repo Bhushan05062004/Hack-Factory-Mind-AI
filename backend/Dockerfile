@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Create data directory
-RUN mkdir -p /app/data
+# Create data directory and seed database + FAISS indices on build
+RUN mkdir -p /app/data && python seed.py
 
 EXPOSE 8000
 

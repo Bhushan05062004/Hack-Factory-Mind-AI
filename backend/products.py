@@ -1,6 +1,6 @@
 """
 Factory Mind AI — Product Catalog Embedding & FAISS Search
-Indexes product descriptions with sentence-transformers (all-MiniLM-L6-v2).
+Uses Google Gemini Embedding API (zero local RAM) instead of sentence-transformers.
 FAISS index is persisted to disk for fast startup.
 
 TOKEN-EFFICIENCY: Limit top_k to 3 for products; each snippet is trimmed
@@ -13,7 +13,6 @@ import numpy as np
 from typing import Optional
 
 # Lazy-loaded globals
-_model = None
 _index = None
 _product_map: list[dict] = []
 
@@ -21,14 +20,47 @@ INDEX_DIR = os.path.join(os.path.dirname(__file__), "data")
 INDEX_PATH = os.path.join(INDEX_DIR, "product_index.faiss")
 MAP_PATH = os.path.join(INDEX_DIR, "product_map.json")
 
+EMBED_DIM = 768  # Gemini embedding output dimension
 
-def _get_model():
-    """Lazy-load the sentence-transformer model."""
-    global _model
-    if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
+
+def _embed_texts(texts: list[str]) -> np.ndarray:
+    """Embed texts using Google Gemini's free embedding API."""
+    import google.generativeai as genai
+    
+    results = []
+    # Process in batches of 20 to avoid rate limits
+    for i in range(0, len(texts), 20):
+        batch = texts[i:i+20]
+        for text in batch:
+            result = genai.embed_content(
+                model="models/gemini-embedding-001",
+                content=text,
+                task_type="RETRIEVAL_DOCUMENT",
+            )
+            results.append(result['embedding'])
+    
+    embeddings = np.array(results, dtype="float32")
+    # Normalize for cosine similarity
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    embeddings = embeddings / norms
+    return embeddings
+
+
+def _embed_query(query: str) -> np.ndarray:
+    """Embed a single query using Google Gemini's free embedding API."""
+    import google.generativeai as genai
+    
+    result = genai.embed_content(
+        model="models/gemini-embedding-001",
+        content=query,
+        task_type="RETRIEVAL_QUERY",
+    )
+    vec = np.array([result['embedding']], dtype="float32")
+    norms = np.linalg.norm(vec, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    vec = vec / norms
+    return vec
 
 
 def _product_text(product: dict) -> str:
@@ -45,7 +77,7 @@ def _product_text(product: dict) -> str:
 def build_product_index() -> int:
     """
     Read all products from SQLite, encode descriptions with
-    sentence-transformers, and save a FAISS index to disk.
+    Gemini embedding API, and save a FAISS index to disk.
     Returns the number of products indexed.
     """
     import faiss
@@ -55,10 +87,8 @@ def build_product_index() -> int:
     if not products:
         return 0
 
-    model = _get_model()
     texts = [_product_text(p) for p in products]
-    embeddings = model.encode(texts, normalize_embeddings=True)
-    embeddings = np.array(embeddings, dtype="float32")
+    embeddings = _embed_texts(texts)
 
     # Inner-product index (cosine similarity on normalized vectors)
     dim = embeddings.shape[1]
@@ -103,9 +133,7 @@ def search_products(query: str, k: int = 3) -> list[dict]:
 
     _load_index()
 
-    model = _get_model()
-    query_vec = model.encode([query], normalize_embeddings=True)
-    query_vec = np.array(query_vec, dtype="float32")
+    query_vec = _embed_query(query)
 
     scores, indices = _index.search(query_vec, min(k, len(_product_map)))
 

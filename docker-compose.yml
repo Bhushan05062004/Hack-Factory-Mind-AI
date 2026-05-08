@@ -3,13 +3,13 @@ version: "3.9"
 services:
   api:
     build: ./backend
-    container_name: nova-nexus-api
+    container_name: factory-mind-api
     ports:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - JWT_SECRET=${JWT_SECRET:-supersecret}
-      - DB_PATH=/app/data/nova_nexus.db
+      - DB_PATH=/app/data/factory_mind_ai.db
     volumes:
       - api-data:/app/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: nova-nexus-frontend
+    container_name: factory-mind-frontend
     ports:
       - "3000:3000"
     depends_on:
