@@ -48,8 +48,9 @@ app.add_middleware(
 #  HEALTH CHECK
 # ─────────────────────────────────────────────
 @app.get("/health")
+@app.get("/healthz")
 async def health():
-    return {"status": "ok", "service": "nova-nexus-api"}
+    return {"status": "ok", "service": "factory-mind-api"}
 
 
 # ─────────────────────────────────────────────
